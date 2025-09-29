@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Docker/dockerfile
+    env_file:
+      - .env
+    container_name: ${DOCKER_CONTAINER_NAME}
+    restart: unless-stopped
+    ports:
+      - ${DOCKER_EXPOSE_PORT}:${VITE_APP_PORT}
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
