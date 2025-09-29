@@ -1,5 +1,4 @@
-# Etapa de build
-FROM node:24-alpine3.21 AS builder
+FROM node:24-alpine3.21
 
 WORKDIR /app
 
@@ -14,16 +13,3 @@ COPY ../ ./
 
 # Ejecutamos build
 RUN npm run build
-
-FROM node:24-alpine3.21 AS runner
-
-WORKDIR /app
-
-# Instalamos 'serve' globalmente para servir los archivos estáticos
-RUN npm install -g serve
-
-# Copiamos el build
-COPY --from=builder /app/dist ./dist
-
-# Arranque
-CMD ["serve", "-s", "dist", "-l", "5173"]

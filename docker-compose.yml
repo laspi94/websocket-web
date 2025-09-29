@@ -1,3 +1,8 @@
+networks:
+  react-network:
+    name: react-network
+    driver: bridge
+
 services:
   app:
     build:
@@ -9,6 +14,27 @@ services:
     restart: unless-stopped
     ports:
       - ${DOCKER_EXPOSE_PORT}:${VITE_APP_PORT}
+    volumes:
+      - react-dist:/app/dist
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    networks:
+      - react-network
+
+  web:
+    image: nginx:stable-alpine
+    container_name: ${DOCKER_CONTAINER_NAME}-nginx
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_EXPOSE_PORT}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - react-dist:/app/dist
+    depends_on:
+      - app
+    networks:
+      - react-network
+
+volumes:
+  react-dist:
