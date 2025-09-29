@@ -17,20 +17,25 @@ const LoginWrapper: React.FC = () => {
     return <Login onLogin={login} />;
 };
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+    [
+        {
+            path: "/login",
+            element:
+                <AppWrapper>
+                    <LoginWrapper />
+                </AppWrapper>,
+        },
+        {
+            path: "/",
+            element: (
+                <PrivateRoute>
+                    <Dashboard />
+                </PrivateRoute>
+            ),
+        },
+    ],
     {
-        path: "/login",
-        element:
-            <AppWrapper>
-                <LoginWrapper />
-            </AppWrapper>,
-    },
-    {
-        path: "/",
-        element: (
-            <PrivateRoute>
-                <Dashboard />
-            </PrivateRoute>
-        ),
-    },
-]);
+        basename: "/wssweb"
+    }
+);

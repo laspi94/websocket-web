@@ -1,0 +1,5 @@
+# React app
+location ^~ /wssweb {
+    alias /var/www/websocket-web/dist/;
+    try_files $uri $uri/ /index.html;
+}
