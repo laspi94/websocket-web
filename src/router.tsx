@@ -7,7 +7,13 @@ import Dashboard from "./pages/dashboard";
 import AppWrapper from "./App";
 
 const PrivateRoute: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, session, logout } = useAuth();
+
+    if (!session()) {
+        logout();
+        return <Navigate to="/login" replace />;
+    }
+
     return isLoggedIn ? children : <Navigate to="/login" replace />;
 };
 

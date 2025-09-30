@@ -5,30 +5,21 @@ import { getChannels, getClientsByChannel, getEvents, broadcast } from "../servi
 import "../../public/css/dashboard.css";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useNotification } from "../providers/NotificationProvider";
-
-interface Message {
-    id: string;
-    Sender: string;
-    Message: string;
-    Timestamp: string;
-}
+import type { Message } from "../types/message";
 
 const Dashboard: React.FC = () => {
-
+    const [channels, setChannels] = useState<string[]>([]);
+    const [clients, setClients] = useState<string[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [newMessage, setNewMessage] = useState<string>("");
+    const [selectedChannel, setSelectedChannel] = useState<string>("");
+    const { logout } = useAuth();
     const { notify } = useNotification();
-
     const { sendJsonMessage, lastMessage, readyState } = useWebSocket(import.meta.env.VITE_URL_WEBSOCKET || "ws://localhost:8080");
 
-    const { logout } = useAuth();
     const navigate = useNavigate();
 
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-    const [channels, setChannels] = useState<string[]>([]);
-    const [selectedChannel, setSelectedChannel] = useState<string>("");
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [clients, setClients] = useState<string[]>([]);
-    const [newMessage, setNewMessage] = useState<string>("");
 
     const handleLogout = () => {
         logout();
@@ -169,8 +160,7 @@ const Dashboard: React.FC = () => {
             await broadcast(selectedChannel, newMessage);
             setNewMessage("");
         } catch (error) {
-            console.error("Error enviando mensaje:", error);
-            alert("Error enviando mensaje.");
+            notify("❌ Error emitiendo el mensaje:", "error");
         }
     };
 

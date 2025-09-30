@@ -21,6 +21,11 @@ export async function apiFetch(
     });
 
     if (!res.ok) {
+        if (res.status == 401) {
+            localStorage.removeItem("_wstoken");
+            window.dispatchEvent(new Event("unauthorized"));
+        }
+
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || "Api error");
     }
