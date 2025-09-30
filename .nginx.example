@@ -1,5 +1,14 @@
 # React app
-location ^~ /wssweb {
+location = /wssweb {
+    return 301 /wssweb/;
+}
+
+# React SPA
+location ^~ /wssweb/ {
     alias /var/www/websocket-web/dist/;
-    try_files $uri $uri/ /index.html;
+    try_files $uri @reactWssweb;
+}
+    
+location @reactWssweb {
+    rewrite ^/wssweb/(.*)$ /wssweb/index.html last;
 }
