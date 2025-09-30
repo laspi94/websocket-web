@@ -22,7 +22,7 @@ export async function apiFetch(
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Error en la API");
+        throw new Error(err.message || "Api error");
     }
 
     return res.json();

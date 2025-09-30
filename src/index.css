@@ -4,6 +4,17 @@
 
 /* Variables globales */
 :root {
+  --background-card: #2c2f33;
+  --border-color: #23272a;
+  --shadow-medium: rgba(0, 0, 0, 0.4);
+
+  --info-color: #3498db;
+  --success-color: #2ecc71;
+  --danger-color: #e74c3c;
+  --warning-color: #f39c12;
+
+  --text-light: #ffffff;
+
   --primary-color: #e61e1e;
   --primary-hover: #ff3333;
   --background-dark: #161616;
@@ -23,7 +34,7 @@
 body {
   background-color: var(--background-dark);
   color: var(--text-muted);
-  line-height: 1.6;
+  line-height: 1.2;
   overflow-x: hidden;
 }
 
@@ -40,8 +51,7 @@ a {
 }
 
 .hero {
-  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)),
-    url('/img/fondo.jpg') no-repeat center center;
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('/img/fondo.jpg') no-repeat center center;
   background-size: cover;
   height: 85vh;
   display: flex;
@@ -397,8 +407,8 @@ a {
   text-align: center;
   padding: 1.5rem;
   background: linear-gradient(145deg, #1c1c1c, #0f0f0f);
-  border-left: 2px solid var(--primary-color);
-  border-bottom: 2px solid var(--primary-color);
+  border-left: 3px solid var(--primary-color);
+  border-bottom: 3px solid var(--primary-color);
   border-radius: 5px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
@@ -673,6 +683,56 @@ a {
   text-transform: uppercase;
   letter-spacing: 2px;
   animation: loadingText 2s ease-in-out infinite;
+}
+
+.notification-container {
+  position: fixed;
+  top: 3rem;
+  right: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 1000;
+}
+
+.notification {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  background: var(--background-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px var(--shadow-medium);
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.notification.hide {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.notification-info {
+  border-left: 4px solid var(--info-color);
+}
+
+.notification-success {
+  border-left: 4px solid var(--success-color);
+}
+
+.notification-error {
+  border-left: 4px solid var(--danger-color);
+}
+
+.notification-warning {
+  border-left: 4px solid var(--warning-color);
 }
 
 @keyframes spin {

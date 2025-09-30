@@ -4,8 +4,6 @@ const Loader: React.FC<{ onFinish?: () => void }> = ({ onFinish }) => {
     const [visible, setVisible] = useState(true);
 
     useEffect(() => {
-        console.log("🎮 Initializing Index Page Manager...");
-
         const timer = setTimeout(() => {
             hideLoader();
         }, 2000);

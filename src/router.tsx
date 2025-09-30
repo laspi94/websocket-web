@@ -36,6 +36,6 @@ export const router = createBrowserRouter(
         },
     ],
     {
-        basename: "/wssweb"
+        basename: import.meta.env.VITE_APP_BASE_PATH || "/"
     }
 );

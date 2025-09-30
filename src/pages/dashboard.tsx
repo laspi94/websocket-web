@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../providers";
 import { useNavigate } from "react-router-dom";
 import { getChannels, getClientsByChannel, getEvents, broadcast } from "../services";
 import "../../public/css/dashboard.css";
+import useWebSocket, { ReadyState } from "react-use-websocket";
+import { useNotification } from "../providers/NotificationProvider";
 
 interface Message {
     id: string;
@@ -12,8 +14,15 @@ interface Message {
 }
 
 const Dashboard: React.FC = () => {
+
+    const { notify } = useNotification();
+
+    const { sendJsonMessage, lastMessage, readyState } = useWebSocket(import.meta.env.VITE_URL_WEBSOCKET || "ws://localhost:8080");
+
     const { logout } = useAuth();
     const navigate = useNavigate();
+
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const [channels, setChannels] = useState<string[]>([]);
     const [selectedChannel, setSelectedChannel] = useState<string>("");
@@ -25,6 +34,84 @@ const Dashboard: React.FC = () => {
         logout();
         navigate("/login", { replace: true });
     };
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages]);
+
+    useEffect(() => {
+        let keepAlive: ReturnType<typeof setTimeout> | null = null;
+
+        if (readyState === ReadyState.OPEN) {
+
+            notify("🟢 WebSocket conectado", "info");
+            sendJsonMessage({
+                Action: 'auth',
+                Token: import.meta.env.VITE_TOKEN_WEBSOCKET ?? 'server',
+                Id: 'dashboard-ws'
+            });
+
+            keepAlive = setInterval(() => {
+                sendJsonMessage({
+                    Action: 'ping'
+                })
+            }, 25000);
+        } else if (readyState === ReadyState.CONNECTING) {
+            notify("⏳ Conectando...", "info");
+        } else if (readyState === ReadyState.CLOSED) {
+            notify("🔴 Conexión cerrada", "error");
+        }
+
+        return () => {
+            if (keepAlive) clearInterval(keepAlive)
+        }
+
+    }, [readyState]);
+
+    useEffect(() => {
+        if (!lastMessage?.data) return;
+        const event = JSON.parse(lastMessage?.data);
+
+        if (event.Event === 'success') {
+            notify(`✅ ${event.Message}`, "success");
+        }
+
+        if (event.Event === 'error') {
+            notify(`❌ ${event.Message}`, "error");
+        }
+
+        if (event.Event == 'event') {
+            notify("📩 Nuevo evento recibido", "info");
+
+            const now = new Date();
+            const timestamp = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}.${now.getMilliseconds()}`;
+
+            const newMessage = {
+                id: `${timestamp}-${event.Sender}`,
+                Sender: event.Sender ?? 'anonymous',
+                Message: event.Message,
+                Timestamp: timestamp,
+            };
+
+            setMessages(prev => [...prev, newMessage]);
+        }
+
+        if (event.Event == 'subscribed') {
+            notify("👤 Nuevo cliente conectado", "info");
+        }
+    }, [lastMessage]);
+
+    useEffect(() => {
+        if (!selectedChannel) return;
+
+        sendJsonMessage({
+            Action: 'subscribe',
+            Channel: selectedChannel
+        });
+
+    }, [selectedChannel]);
 
     useEffect(() => {
         const fetchChannels = async () => {
@@ -40,6 +127,7 @@ const Dashboard: React.FC = () => {
                     setSelectedChannel(res.channels[0] || "");
                 }
             } catch (err) {
+                notify("❌ Error cargando canales:", "error");
                 console.error("Error cargando canales:", err);
             }
         };
@@ -72,9 +160,6 @@ const Dashboard: React.FC = () => {
         };
 
         fetchData();
-
-        const interval = setInterval(fetchData, 3000);
-        return () => clearInterval(interval);
     }, [selectedChannel]);
 
     const handleSendMessage = async () => {
@@ -141,6 +226,9 @@ const Dashboard: React.FC = () => {
                                         <span className="event-time">{msg.Timestamp}</span>
                                     </div>
                                 ))}
+
+                                {/* Elemento vacío para hacer scroll */}
+                                <div ref={messagesEndRef} />
                             </div>
                         </div>
                     </section>
