@@ -143,7 +143,7 @@ const Dashboard: React.FC = () => {
                 Action: Action.SUBSCRIBE,
                 Channel: selectedChannel
             });
-        }, 1500);
+        }, 1000);
 
     }, [selectedChannel]);
 
