@@ -32,7 +32,38 @@ const Dashboard: React.FC = () => {
         navigate("/login", { replace: true });
     };
 
-    const fetchData = async () => {
+    const fetchChannels = async () => {
+        try {
+            const res: { channels: string[] } = await getChannels();
+
+            /** Solo asigna si hay canales nuevos */
+            setChannels(prevChannels => {
+                if (prevChannels.length !== res.channels.length) {
+                    return res.channels;
+                }
+
+                /** verifica que no haya modificación por item, puede no cambiar la cantidad pero si el valor del canal */
+                const isSame = prevChannels.every((c, i) => c === res.channels[i]);
+                if (!isSame) {
+                    return res.channels;
+                }
+
+                return prevChannels;
+            });
+
+            if (!selectedChannel && res.channels.length > 0) {
+                setSelectedChannel(res.channels[0]);
+            }
+
+            if (selectedChannel && !res.channels.includes(selectedChannel)) {
+                setSelectedChannel(res.channels[0] || "");
+            }
+        } catch (err) {
+            notify("❌ Error cargando canales:", Notify.ERROR);
+        }
+    };
+
+    const fetchClients = async () => {
         try {
             const clientsRes: { clients: string[] } = await getClientsByChannel(selectedChannel);
             setClients(clientsRes.clients);
@@ -98,9 +129,7 @@ const Dashboard: React.FC = () => {
         const event = JSON.parse(lastMessage?.data);
 
         if (event.Event === Event.SUCCESS) {
-            setTimeout(() => {
-                fetchData();
-            }, 3000);
+            fetchClients();
             notify(`✅ ${event.Message}`, Notify.SUCCESS);
         }
 
@@ -126,54 +155,35 @@ const Dashboard: React.FC = () => {
 
         if (event.Event == Event.SUBSCRIBED) {
             notify("🟢 Nuevo cliente conectado", Notify.INFO);
-            fetchData();
+            fetchClients();
         }
 
         if (event.Event == Event.DISCONNECTED) {
             notify("🔴 Cliente desconectado", Notify.INFO);
-            fetchData();
+            fetchClients();
         }
     }, [lastMessage]);
 
     useEffect(() => {
         if (!selectedChannel) return;
 
-        setTimeout(() => {
+        const handler = setTimeout(() => {
             sendJsonMessage({
                 Action: Action.SUBSCRIBE,
                 Channel: selectedChannel
             });
         }, 1000);
 
+        return () => {
+            clearTimeout(handler);
+        };
     }, [selectedChannel]);
 
     useEffect(() => {
-        const fetchChannels = async () => {
-            try {
-                const res: { channels: string[] } = await getChannels();
-                setChannels(res.channels);
-
-                if (!selectedChannel && res.channels.length > 0) {
-                    setSelectedChannel(res.channels[0]);
-                }
-
-                if (selectedChannel && !res.channels.includes(selectedChannel)) {
-                    setSelectedChannel(res.channels[0] || "");
-                }
-            } catch (err) {
-                notify("❌ Error cargando canales:", Notify.ERROR);
-            }
-        };
-
         fetchChannels();
 
-        const interval = setInterval(fetchChannels, 10000);
+        const interval = setInterval(fetchChannels, 15000);
         return () => clearInterval(interval);
-    }, [selectedChannel]);
-
-    useEffect(() => {
-        if (!selectedChannel) return;
-        fetchData();
     }, [selectedChannel]);
 
     const handleSendMessage = async () => {
