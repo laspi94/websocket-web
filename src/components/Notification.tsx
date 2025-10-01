@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
+import type { Notify as NotifyType } from "../enums";
+import { Notify } from "../enums";
 
 interface NotificationProps {
     id: number;
     message: string;
-    type?: "info" | "success" | "error" | "warning";
+    type?: NotifyType;
     onClose: (id: number) => void;
 }
 
-const Notification: React.FC<NotificationProps> = ({ id, message, type = "info", onClose }) => {
+const Notification: React.FC<NotificationProps> = ({ id, message, type = Notify.INFO, onClose }) => {
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {

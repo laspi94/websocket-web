@@ -16,6 +16,6 @@ export async function getClientsByChannel(channel: string) {
     return apiFetch(`/clients/by-channel?channel=${channel}`, 'GET');
 }
 
-export async function broadcast(channel: string, message: string) {
-    return apiFetch(`/broadcast?channel=${channel}&message=${message}`, 'POST');
+export async function broadcast(channel: string, message: string, id: string, sender: string) {
+    return apiFetch(`/broadcast?channel=${channel}&message=${message}&id=${id}&sender=${sender}`, 'POST');
 }

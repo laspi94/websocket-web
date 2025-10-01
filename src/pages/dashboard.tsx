@@ -1,11 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import "../../public/css/dashboard.css";
+
+import { Action, Event, Notify } from "../enums";
+import { getChannels, getClientsByChannel, getEvents, broadcast } from "../services";
 import { useAuth } from "../providers";
 import { useNavigate } from "react-router-dom";
-import { getChannels, getClientsByChannel, getEvents, broadcast } from "../services";
-import "../../public/css/dashboard.css";
-import useWebSocket, { ReadyState } from "react-use-websocket";
 import { useNotification } from "../providers/NotificationProvider";
+import React, { useEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
+import useWebSocket, { ReadyState } from "react-use-websocket";
+import type { WebSocketLike } from "react-use-websocket/dist/lib/types";
+
+const ID_CLIENT = 'dashboard-ws';
 
 const Dashboard: React.FC = () => {
     const [channels, setChannels] = useState<string[]>([]);
@@ -15,7 +20,8 @@ const Dashboard: React.FC = () => {
     const [selectedChannel, setSelectedChannel] = useState<string>("");
     const { logout } = useAuth();
     const { notify } = useNotification();
-    const { sendJsonMessage, lastMessage, readyState } = useWebSocket(import.meta.env.VITE_URL_WEBSOCKET || "ws://localhost:8080");
+    const wsRef = useRef<WebSocketLike | null>(null);
+    const { sendJsonMessage, lastMessage, readyState, getWebSocket } = useWebSocket(import.meta.env.VITE_URL_WEBSOCKET || "ws://localhost:8080");
 
     const navigate = useNavigate();
 
@@ -26,6 +32,24 @@ const Dashboard: React.FC = () => {
         navigate("/login", { replace: true });
     };
 
+    const fetchData = async () => {
+        try {
+            const clientsRes: { clients: string[] } = await getClientsByChannel(selectedChannel);
+            setClients(clientsRes.clients);
+
+            const data = await getEvents(selectedChannel);
+            const formatted = data.map((msg: any, index: number) => ({
+                id: `${msg.Timestamp}-${index}`,
+                Sender: msg.Sender,
+                Message: msg.Message,
+                Timestamp: msg.Timestamp,
+            }));
+            setMessages(formatted);
+        } catch (error) {
+            console.error("Error cargando clientes del canal:", error);
+        }
+    };
+
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -33,15 +57,23 @@ const Dashboard: React.FC = () => {
     }, [messages]);
 
     useEffect(() => {
+        wsRef.current = getWebSocket();
+
+        return () => {
+            wsRef.current?.close();
+        }
+    }, [])
+
+    useEffect(() => {
         let keepAlive: ReturnType<typeof setTimeout> | null = null;
 
         if (readyState === ReadyState.OPEN) {
+            notify("🟢 WebSocket conectado", Notify.INFO);
 
-            notify("🟢 WebSocket conectado", "info");
             sendJsonMessage({
                 Action: 'auth',
                 Token: import.meta.env.VITE_TOKEN_WEBSOCKET ?? 'server',
-                Id: 'dashboard-ws'
+                Id: ID_CLIENT
             });
 
             keepAlive = setInterval(() => {
@@ -50,9 +82,9 @@ const Dashboard: React.FC = () => {
                 })
             }, 25000);
         } else if (readyState === ReadyState.CONNECTING) {
-            notify("⏳ Conectando...", "info");
+            notify("⏳ Conectando...", Notify.INFO);
         } else if (readyState === ReadyState.CLOSED) {
-            notify("🔴 Conexión cerrada", "error");
+            notify("🔴 Conexión cerrada", Notify.ERROR);
         }
 
         return () => {
@@ -65,16 +97,19 @@ const Dashboard: React.FC = () => {
         if (!lastMessage?.data) return;
         const event = JSON.parse(lastMessage?.data);
 
-        if (event.Event === 'success') {
-            notify(`✅ ${event.Message}`, "success");
+        if (event.Event === Event.SUCCESS) {
+            setTimeout(() => {
+                fetchData();
+            }, 3000);
+            notify(`✅ ${event.Message}`, Notify.SUCCESS);
         }
 
-        if (event.Event === 'error') {
-            notify(`❌ ${event.Message}`, "error");
+        if (event.Event === Event.ERROR) {
+            notify(`❌ ${event.Message}`, Notify.ERROR);
         }
 
-        if (event.Event == 'event') {
-            notify("📩 Nuevo evento recibido", "info");
+        if (event.Event == Event.EVENT) {
+            notify("📩 Nuevo evento recibido", Notify.INFO);
 
             const now = new Date();
             const timestamp = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}.${now.getMilliseconds()}`;
@@ -89,18 +124,26 @@ const Dashboard: React.FC = () => {
             setMessages(prev => [...prev, newMessage]);
         }
 
-        if (event.Event == 'subscribed') {
-            notify("👤 Nuevo cliente conectado", "info");
+        if (event.Event == Event.SUBSCRIBED) {
+            notify("🟢 Nuevo cliente conectado", Notify.INFO);
+            fetchData();
+        }
+
+        if (event.Event == Event.DISCONNECTED) {
+            notify("🔴 Cliente desconectado", Notify.INFO);
+            fetchData();
         }
     }, [lastMessage]);
 
     useEffect(() => {
         if (!selectedChannel) return;
 
-        sendJsonMessage({
-            Action: 'subscribe',
-            Channel: selectedChannel
-        });
+        setTimeout(() => {
+            sendJsonMessage({
+                Action: Action.SUBSCRIBE,
+                Channel: selectedChannel
+            });
+        }, 1500);
 
     }, [selectedChannel]);
 
@@ -118,8 +161,7 @@ const Dashboard: React.FC = () => {
                     setSelectedChannel(res.channels[0] || "");
                 }
             } catch (err) {
-                notify("❌ Error cargando canales:", "error");
-                console.error("Error cargando canales:", err);
+                notify("❌ Error cargando canales:", Notify.ERROR);
             }
         };
 
@@ -131,25 +173,6 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         if (!selectedChannel) return;
-
-        const fetchData = async () => {
-            try {
-                const clientsRes: { clients: string[] } = await getClientsByChannel(selectedChannel);
-                setClients(clientsRes.clients);
-
-                const data = await getEvents(selectedChannel);
-                const formatted = data.map((msg: any, index: number) => ({
-                    id: `${msg.Timestamp}-${index}`,
-                    Sender: msg.Sender,
-                    Message: msg.Message,
-                    Timestamp: msg.Timestamp,
-                }));
-                setMessages(formatted);
-            } catch (error) {
-                console.error("Error cargando datos del canal:", error);
-            }
-        };
-
         fetchData();
     }, [selectedChannel]);
 
@@ -157,10 +180,10 @@ const Dashboard: React.FC = () => {
         if (!newMessage.trim()) return;
 
         try {
-            await broadcast(selectedChannel, newMessage);
+            await broadcast(selectedChannel, newMessage, ID_CLIENT, ID_CLIENT);
             setNewMessage("");
         } catch (error) {
-            notify("❌ Error emitiendo el mensaje:", "error");
+            notify("❌ Error emitiendo el mensaje:", Notify.ERROR);
         }
     };
 
